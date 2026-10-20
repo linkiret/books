@@ -2,7 +2,6 @@ import { httpGet } from './http';
 
 const BASE = 'https://api.cdnlibs.org/api';
 
-// Site-Id и Referer обязательны, иначе 403.
 const HEADERS = {
   'Site-Id': '3',
   'Referer': 'https://ranobelib.me/',
@@ -19,6 +18,12 @@ export interface RanobeLibTitle {
   summary: string;
 }
 
+export interface RanobeLibGenre {
+  id: number;
+  name: string;
+  rus_name?: string;
+}
+
 export interface RanobeLibChapter {
   id: number;
   volume: string;
@@ -30,6 +35,33 @@ export async function search(query: string): Promise<RanobeLibTitle[]> {
   const url = `${BASE}/manga?q=${encodeURIComponent(query)}&site_id[]=3`;
   const res = await httpGet(url, HEADERS);
   return res.data || [];
+}
+
+export async function getGenres(): Promise<RanobeLibGenre[]> {
+  const url = `${BASE}/constants?fields[]=genres`;
+  const res = await httpGet(url, HEADERS);
+  const raw = res.data?.genres || res.data || [];
+  return Array.isArray(raw) ? raw : [];
+}
+
+export async function getCatalog(opts: {
+  page?: number;
+  genreId?: number | null;
+  sortBy?: string;
+}): Promise<{ items: RanobeLibTitle[]; lastPage: number }> {
+  const page = opts.page || 1;
+  const params = new URLSearchParams();
+  params.set('site_id[]', '3');
+  params.set('page', String(page));
+  if (opts.sortBy) params.set('sort_by', opts.sortBy);
+  if (opts.genreId) params.set('genres[]', String(opts.genreId));
+
+  const url = `${BASE}/manga?${params.toString()}`;
+  const res = await httpGet(url, HEADERS);
+  return {
+    items: res.data || [],
+    lastPage: res.meta?.last_page || 1,
+  };
 }
 
 export async function getChapters(slugUrl: string): Promise<RanobeLibChapter[]> {
@@ -50,7 +82,6 @@ export async function getChapterContent(
   return prosemirrorToHtml(content, res.data.attachments || []);
 }
 
-// Контент главы приходит как ProseMirror JSON. Конвертируем в HTML.
 function prosemirrorToHtml(doc: any, attachments: any[]): string {
   const parts: string[] = [];
   for (const node of doc.content || []) {

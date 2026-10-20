@@ -12,7 +12,8 @@ export interface FlibustaBook {
 }
 
 export async function search(query: string): Promise<FlibustaBook[]> {
-  const url = `${BASE}/opds/search?searchTerm=${encodeURIComponent(query)}`;
+  // OPDS использует ?q=, а не ?searchTerm=
+  const url = `${BASE}/opds/search?q=${encodeURIComponent(query)}`;
   const xml = await httpGetText(url);
   return parseOpds(xml);
 }

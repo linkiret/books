@@ -40,9 +40,7 @@ export async function removeFromLibrary(id: string): Promise<void> {
     const dir = item.format === 'pdf' ? Directory.Documents : Directory.Data;
     try {
       await Filesystem.deleteFile({ path: item.filePath, directory: dir });
-    } catch {
-      // файл уже удалён — не страшно
-    }
+    } catch {}
   }
 }
 
@@ -51,13 +49,15 @@ export async function readBookBase64(filePath: string): Promise<string> {
   return res.data as string;
 }
 
+// ВАЖНО: возвращаем относительный путь, а не res.path!
+// На Android res.path — абсолютный file:// URI, readFile с Directory.Data его не находит.
 export async function downloadToFile(url: string, fileName: string): Promise<string> {
-  const res = await Filesystem.downloadFile({
+  await Filesystem.downloadFile({
     url,
     path: fileName,
     directory: Directory.Data,
   });
-  return res.path!;
+  return fileName;
 }
 
 export async function downloadPdf(url: string, fileName: string): Promise<string> {
@@ -72,12 +72,12 @@ export async function downloadPdf(url: string, fileName: string): Promise<string
 
 export async function writeBlobToData(blob: Blob, fileName: string): Promise<string> {
   const base64 = await blobToBase64(blob);
-  const res = await Filesystem.writeFile({
+  await Filesystem.writeFile({
     path: fileName,
     data: base64,
     directory: Directory.Data,
   });
-  return res.uri;
+  return fileName; // относительный путь
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
